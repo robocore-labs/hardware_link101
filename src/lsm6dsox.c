@@ -40,16 +40,23 @@
 #define LSB_PER_DEGREE   256.0f
 #define TEMP_ZERO_C      25.0f
 
+// Timeouts, not the plain _blocking calls: those have none, and a bus
+// wedged by a chip that never releases SDA (or one that just isn't there,
+// on a board revision without it) hangs main() forever -- taking USB down
+// with it, since nothing pumps tud_task() while this call sits. A few
+// hundred us is generous for a handful of bytes at 400 kHz.
+#define I2C_TIMEOUT_US 1000
+
 static bool reg_write(link101_lsm6dsox_t *dev, uint8_t reg, uint8_t val) {
     uint8_t buf[2] = { reg, val };
-    return i2c_write_blocking(dev->i2c, dev->addr, buf, 2, false) == 2;
+    return i2c_write_timeout_us(dev->i2c, dev->addr, buf, 2, false, I2C_TIMEOUT_US) == 2;
 }
 
 static bool reg_read(link101_lsm6dsox_t *dev, uint8_t reg, uint8_t *dst, size_t n) {
-    if (i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, true) != 1) {
+    if (i2c_write_timeout_us(dev->i2c, dev->addr, &reg, 1, true, I2C_TIMEOUT_US) != 1) {
         return false;
     }
-    return i2c_read_blocking(dev->i2c, dev->addr, dst, n, false) == (int)n;
+    return i2c_read_timeout_us(dev->i2c, dev->addr, dst, n, false, I2C_TIMEOUT_US) == (int)n;
 }
 
 static inline int16_t le16(const uint8_t *p) {

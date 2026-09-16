@@ -23,16 +23,20 @@
 #define COUNTS_PER_GAUSS   16384.0f
 #define GAUSS_TO_TESLA     1.0e-4f
 
+// See the identical comment in lsm6dsox.c: the plain _blocking calls have
+// no timeout, and a wedged bus hangs main() -- and USB with it.
+#define I2C_TIMEOUT_US 1000
+
 static bool reg_write(link101_mmc5983_t *dev, uint8_t reg, uint8_t val) {
     uint8_t buf[2] = { reg, val };
-    return i2c_write_blocking(dev->i2c, dev->addr, buf, 2, false) == 2;
+    return i2c_write_timeout_us(dev->i2c, dev->addr, buf, 2, false, I2C_TIMEOUT_US) == 2;
 }
 
 static bool reg_read(link101_mmc5983_t *dev, uint8_t reg, uint8_t *dst, size_t n) {
-    if (i2c_write_blocking(dev->i2c, dev->addr, &reg, 1, true) != 1) {
+    if (i2c_write_timeout_us(dev->i2c, dev->addr, &reg, 1, true, I2C_TIMEOUT_US) != 1) {
         return false;
     }
-    return i2c_read_blocking(dev->i2c, dev->addr, dst, n, false) == (int)n;
+    return i2c_read_timeout_us(dev->i2c, dev->addr, dst, n, false, I2C_TIMEOUT_US) == (int)n;
 }
 
 bool link101_mmc5983_init(link101_mmc5983_t *dev, i2c_inst_t *i2c, uint8_t addr) {
