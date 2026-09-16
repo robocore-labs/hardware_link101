@@ -40,6 +40,16 @@ typedef struct {
 bool link101_lsm6dsox_init(link101_lsm6dsox_t *dev, i2c_inst_t *i2c, uint8_t addr);
 
 /*
+ * Read WHO_AM_I without configuring anything -- for board bring-up, when
+ * init() says no and you need to know whether that means nothing answered
+ * at addr, or something did and it just isn't a 0x6C. chip_id is written
+ * either way (0 if nothing answered at all); the return value is only
+ * whether the I2C transaction itself completed.
+ */
+bool link101_lsm6dsox_probe(i2c_inst_t *i2c, uint8_t addr, uint8_t *chip_id);
+#define LINK101_LSM6DSOX_WHO_AM_I 0x6C  // what a genuine LSM6DSOX/LSM6DSO reports
+
+/*
  * One sample: acceleration in m/s^2 (gravity included, as sensor_msgs/Imu
  * expects) and angular velocity in rad/s. Both are read in a single burst,
  * so the two vectors are from the same instant. Either pointer may be NULL.

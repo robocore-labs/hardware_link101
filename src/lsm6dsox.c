@@ -11,7 +11,6 @@
 #define REG_OUTX_L_G     0x22   // 0x20..0x2D is one contiguous block
 #define REG_OUTX_L_A     0x28
 
-#define WHO_AM_I_VALUE   0x6C   // LSM6DSOX (and LSM6DSO)
 
 #define CTRL3_C_BOOT     0x80
 #define CTRL3_C_BDU      0x40   // don't update a sample mid-read
@@ -63,12 +62,26 @@ static inline int16_t le16(const uint8_t *p) {
     return (int16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
 }
 
+bool link101_lsm6dsox_probe(i2c_inst_t *i2c, uint8_t addr, uint8_t *chip_id) {
+    // Raw, not through reg_read(): that takes a link101_lsm6dsox_t*, and
+    // this runs precisely when there may be no valid device to build one
+    // from -- the whole point is finding out.
+    uint8_t reg = REG_WHO_AM_I;
+    uint8_t id  = 0;
+    bool acked = i2c_write_timeout_us(i2c, addr, &reg, 1, true, I2C_TIMEOUT_US) == 1 &&
+                 i2c_read_timeout_us(i2c, addr, &id, 1, false, I2C_TIMEOUT_US) == 1;
+    if (chip_id) {
+        *chip_id = id;
+    }
+    return acked;
+}
+
 bool link101_lsm6dsox_init(link101_lsm6dsox_t *dev, i2c_inst_t *i2c, uint8_t addr) {
     dev->i2c  = i2c;
     dev->addr = addr;
 
     uint8_t id = 0;
-    if (!reg_read(dev, REG_WHO_AM_I, &id, 1) || id != WHO_AM_I_VALUE) {
+    if (!reg_read(dev, REG_WHO_AM_I, &id, 1) || id != LINK101_LSM6DSOX_WHO_AM_I) {
         dev->i2c = NULL;      // nothing there; every read will fail cleanly
         return false;
     }
