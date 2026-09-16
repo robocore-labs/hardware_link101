@@ -42,9 +42,18 @@
 #define LINK101_PIN_SPI_MISO     12
 #define LINK101_PIN_SPI_CS       13
 
-// I2C on i2c1 (Qwiic connector).
+// I2C on i2c1: the Qwiic connector, and the two sensors fitted to the
+// board. Their addresses are fixed by the layout (the LSM6DSOX has SDO/SA0
+// tied high), so they are board facts like the pins themselves. Nothing
+// else on the bus may use 0x6B or 0x30.
+//
+// Their INT lines go to solder jumpers JP1 (IMU) and JP2 (magnetometer),
+// OPEN from the factory -- so nothing reaches a GPIO until you bridge one,
+// and both drivers poll.
 #define LINK101_PIN_SDA          14
 #define LINK101_PIN_SCL          15
+#define LINK101_LSM6DSOX_I2C_ADDR 0x6B   // see link101/lsm6dsox.h
+#define LINK101_MMC5983_I2C_ADDR  0x30   // see link101/mmc5983.h
 
 // Button. Read at boot to select config mode; otherwise general purpose.
 #define LINK101_PIN_BUTTON       17

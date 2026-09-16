@@ -5,6 +5,8 @@ add_library(hardware_link101 STATIC
     ${CMAKE_CURRENT_LIST_DIR}/src/uart_serial.c
     ${CMAKE_CURRENT_LIST_DIR}/src/neopixel.c
     ${CMAKE_CURRENT_LIST_DIR}/src/can.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/lsm6dsox.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/mmc5983.c
 )
 
 target_include_directories(hardware_link101 PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
@@ -17,6 +19,7 @@ target_link_libraries(hardware_link101 PUBLIC
     hardware_uart
     hardware_irq
     hardware_spi
+    hardware_i2c
 )
 
 # Generated .pio headers land on this target's include path, so they must be

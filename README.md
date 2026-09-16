@@ -22,6 +22,8 @@ target_link_libraries(my_firmware hardware_link101)
 | `link101/buses.h` | Constructors for the board-fixed buses |
 | `link101/neopixel.h` | The six-pixel WS2812 strip |
 | `link101/can.h` | MCP2518FD CAN / CAN-FD controller |
+| `link101/lsm6dsox.h` | The onboard 6-axis IMU (accel + gyro) |
+| `link101/mmc5983.h` | The onboard magnetometer |
 
 ## Pins: fixed vs assigned
 
@@ -30,7 +32,9 @@ target_link_libraries(my_firmware hardware_link101)
 **Fixed** — something is soldered to this pin. The servo bus (GP7/GP8 with
 direction on GP16), the RS485 transceiver (GP0–2), the CAN controller
 (GP9–13 on spi1), I²C (GP14/15), the button (GP17), the LED strip (GP18).
-These are the same on every board and get `LINK101_PIN_*` macros.
+These are the same on every board and get `LINK101_PIN_*` macros. The two
+I²C addresses the board itself occupies are fixed in the same way, and are
+in `pins.h` for the same reason.
 
 **Assigned** — GP3–6 and GP19–26 are broken out to headers. What is on the
 other end is a property of the robot, so the application picks and there are
@@ -187,6 +191,47 @@ therefore does not blink anything.
 
 `link101_neopixel_show()` blocks for roughly `10 µs × pixels + 500 µs`, and
 staggers the updates so all six do not switch at once.
+
+## The onboard IMU
+
+Two chips on the I²C bus, both soldered to the board: an **LSM6DSOX**
+(accelerometer + gyroscope) at `0x6B`, and an **MMC5983MA** magnetometer at
+`0x30`. Together they are a 9-DOF IMU; neither collides with a BNO055 on the
+Qwiic connector at `0x28`.
+
+```c
+#include "link101/lsm6dsox.h"
+#include "link101/mmc5983.h"
+
+static link101_lsm6dsox_t imu;
+static link101_mmc5983_t  mag;
+
+i2c_init(i2c1, 400000);
+gpio_set_function(LINK101_PIN_SDA, GPIO_FUNC_I2C);
+gpio_set_function(LINK101_PIN_SCL, GPIO_FUNC_I2C);
+gpio_pull_up(LINK101_PIN_SDA);
+gpio_pull_up(LINK101_PIN_SCL);
+
+link101_lsm6dsox_init(&imu, i2c1, LINK101_LSM6DSOX_I2C_ADDR);
+link101_mmc5983_init(&mag, i2c1, LINK101_MMC5983_I2C_ADDR);
+
+float accel[3], gyro[3], field[3];
+link101_lsm6dsox_read(&imu, accel, gyro);   // m/s^2 (gravity included), rad/s
+link101_mmc5983_read(&mag, field);          // tesla
+```
+
+**There is no orientation.** The LSM6DSOX is a raw 6-axis sensor with no
+fusion engine, so unlike a BNO055 there is no quaternion to read — fuse on
+the host (`imu_filter_madgwick`, `robot_localization`) from the IMU and
+magnetometer topics. A firmware publishing `sensor_msgs/Imu` from this
+should set `orientation_covariance[0] = -1`, which is how that message says
+"no orientation estimate here".
+
+Both drivers poll, and both are configured for it: the IMU free-runs at
+104 Hz and the magnetometer measures continuously at 100 Hz with automatic
+set/reset, so a read is a register read and never waits on a conversion.
+Their interrupt lines go to solder jumpers JP1 and JP2, open from the
+factory.
 
 ## CAN
 
